@@ -5,4 +5,4 @@ scala:
 
 script:
   - sbt --version
-  - echo 1 | sbt ++$TRAVIS_SCALA_VERSION run
+  - sbt ++$TRAVIS_SCALA_VERSION run
