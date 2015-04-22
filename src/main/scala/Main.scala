@@ -7,7 +7,7 @@
 object Main {
   def main(args: Array[String]) {
     val board = Board.defaultBoard
-    val bots: Map[PieceColor, Bot] = Map(White -> new RandomBot(),
+    val bots: Map[PieceColor, Bot] = Map(White -> new NegaMaxBot(),
                                         Black -> new RandomBot())
     val game = new Game(board, White, bots)
     game.gameAfterNumberOfMoves(100)

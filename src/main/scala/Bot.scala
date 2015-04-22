@@ -18,6 +18,52 @@ class RandomBot extends Bot {
   }
 }
 
+object NegaMax extends Serializable {
+  val defaultDepth = 3
+
+  def evaluateDefault(game: Game, color: PieceColor) = {
+    val board = game.board
+    board.materialOfColor(color) - board.materialOfColor(color.oppositeColor)
+  }
+
+  def negaMax(game: Game, color: PieceColor): Move = {
+    def negaMaxInternal(game: Game, color: PieceColor, depth: Int): Double = {
+      val board = game.board
+      if (depth == 0) {
+        evaluateDefault(game, color)
+      } else {
+        var moveCandidateScore = Double.NegativeInfinity
+
+        for (move <- board.possibleMovesForColor(color)) {
+          val score = -negaMaxInternal(new Game(board.boardByMakingMove(move), color.oppositeColor, null), color.oppositeColor, depth - 1)
+
+          if (score > moveCandidateScore) {
+            moveCandidateScore = score
+          }
+        }
+
+        moveCandidateScore
+      }
+    }
+
+    val board = game.board
+
+    var moveCandidate: Move = null
+    var moveCandidateScore = Double.NegativeInfinity
+
+    for (move <- board.possibleMovesForColor(color)) {
+      val score = -negaMaxInternal(new Game(board.boardByMakingMove(move), color.oppositeColor, null), color.oppositeColor, defaultDepth)
+
+      if (score > moveCandidateScore) {
+        moveCandidateScore = score
+        moveCandidate = move
+      }
+    }
+
+    moveCandidate
+  }
+}
+
 class SparkBot(sc: SparkContext) extends Bot {
   def nextMove(game: Game): Move = {
     val board = game.board
@@ -34,5 +80,11 @@ class SparkBot(sc: SparkContext) extends Bot {
     val count = optimalMoves.count().toInt
     val index = Random.nextInt(count)
     optimalMoves.collect()(index)._1
+  }
+}
+
+class NegaMaxBot extends Bot {
+  def nextMove(game: Game): Move = {
+    NegaMax.negaMax(game, game.colorToMove)
   }
 }
