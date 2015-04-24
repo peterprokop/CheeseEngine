@@ -48,6 +48,6 @@ class Piece(repr: Char, val color: PieceColor) extends Serializable {
   override def toString() = if (color == White) {
     pieceType.toString.toUpperCase
   } else {
-    pieceType.toString
+    Console.BLUE + pieceType.toString + Console.RESET
   }
 }

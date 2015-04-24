@@ -152,6 +152,16 @@ class Board(val width: Int, val height: Int, val pieces: Array[Array[Option[Piec
 
           candidates.filter(x => isPositionValid(x) && canMoveToPosition(x, color)).map(x => new Move(oldPosition, x))
         }
+        case Bishop => {
+          val diagonal1 = getFreeSpacesInDirection(oldPosition, 1, 1, color)
+          val diagonal2 = getFreeSpacesInDirection(oldPosition, 1, -1, color)
+
+          val diagonal3 = getFreeSpacesInDirection(oldPosition, -1, 1, color)
+          val diagonal4 = getFreeSpacesInDirection(oldPosition, -1, -1, color)
+
+          val candidates = diagonal1 ++ diagonal2 ++ diagonal3 ++ diagonal4
+          candidates.map(x => new Move(oldPosition, x))
+        }
         case Rook => {
           val horizontalUp = getFreeSpacesInDirection(oldPosition, 1, 0, color)
           val horizontalDown = getFreeSpacesInDirection(oldPosition, -1, 0, color)
@@ -160,6 +170,25 @@ class Board(val width: Int, val height: Int, val pieces: Array[Array[Option[Piec
           val verticalLeft = getFreeSpacesInDirection(oldPosition, 0, -1, color)
 
           val candidates = horizontalUp ++ horizontalDown ++ verticalLeft ++ verticalRight
+          candidates.map(x => new Move(oldPosition, x))
+        }
+        case Queen => {
+          val diagonal1 = getFreeSpacesInDirection(oldPosition, 1, 1, color)
+          val diagonal2 = getFreeSpacesInDirection(oldPosition, 1, -1, color)
+
+          val diagonal3 = getFreeSpacesInDirection(oldPosition, -1, 1, color)
+          val diagonal4 = getFreeSpacesInDirection(oldPosition, -1, -1, color)
+
+          val horizontalUp = getFreeSpacesInDirection(oldPosition, 1, 0, color)
+          val horizontalDown = getFreeSpacesInDirection(oldPosition, -1, 0, color)
+
+          val verticalRight = getFreeSpacesInDirection(oldPosition, 0, 1, color)
+          val verticalLeft = getFreeSpacesInDirection(oldPosition, 0, -1, color)
+
+          val diagonals = diagonal1 ++ diagonal2 ++ diagonal3 ++ diagonal4
+          val orthogonals = horizontalUp ++ horizontalDown ++ verticalLeft ++ verticalRight
+
+          val candidates = diagonals ++ orthogonals
           candidates.map(x => new Move(oldPosition, x))
         }
         case King => {

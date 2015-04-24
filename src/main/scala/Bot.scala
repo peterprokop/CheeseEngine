@@ -21,46 +21,41 @@ class RandomBot extends Bot {
 object NegaMax extends Serializable {
   val defaultDepth = 3
 
-  def evaluateDefault(game: Game, color: PieceColor) = {
+  def materialScore(game: Game, color: PieceColor) = {
     val board = game.board
     board.materialOfColor(color) - board.materialOfColor(color.oppositeColor)
   }
 
-  def negaMax(game: Game, color: PieceColor): Move = {
-    def negaMaxInternal(game: Game, color: PieceColor, depth: Int): Double = {
-      val board = game.board
-      if (depth == 0) {
-        evaluateDefault(game, color)
-      } else {
-        var moveCandidateScore = Double.NegativeInfinity
+  def mobilityScore(game: Game, color: PieceColor) = {
+    val board = game.board
+    board.possibleMovesForColor(color).length - board.possibleMovesForColor(color.oppositeColor).length
+  }
 
-        for (move <- board.possibleMovesForColor(color)) {
-          val score = -negaMaxInternal(new Game(board.boardByMakingMove(move), color.oppositeColor, null), color.oppositeColor, depth - 1)
+  def evaluateDefault(game: Game, color: PieceColor) = {
+    materialScore(game, color) + 0.1 * mobilityScore(game, color)
+  }
 
-          if (score > moveCandidateScore) {
-            moveCandidateScore = score
-          }
-        }
-
-        moveCandidateScore
-      }
-    }
-
+  def negaMax(game: Game, color: PieceColor, depth: Int): (Move, Double) = {
     val board = game.board
 
-    var moveCandidate: Move = null
-    var moveCandidateScore = Double.NegativeInfinity
+    if (depth == 0) {
+      (null, evaluateDefault(game, color))
+    } else {
+      var moveCandidate: Move = null
+      var moveCandidateScore = Double.NegativeInfinity
 
-    for (move <- board.possibleMovesForColor(color)) {
-      val score = -negaMaxInternal(new Game(board.boardByMakingMove(move), color.oppositeColor, null), color.oppositeColor, defaultDepth)
+      for (move <- board.possibleMovesForColor(color)) {
+        val candidate = negaMax(new Game(board.boardByMakingMove(move), color.oppositeColor, null), color.oppositeColor, depth - 1)
+        val score = -candidate._2
 
-      if (score > moveCandidateScore) {
-        moveCandidateScore = score
-        moveCandidate = move
+        if (score > moveCandidateScore) {
+          moveCandidateScore = score
+          moveCandidate = move
+        }
       }
-    }
 
-    moveCandidate
+      (moveCandidate, moveCandidateScore)
+    }
   }
 }
 
@@ -83,8 +78,8 @@ class SparkBot(sc: SparkContext) extends Bot {
   }
 }
 
-class NegaMaxBot extends Bot {
+class NegaMaxBot(val maxDepth: Int) extends Bot {
   def nextMove(game: Game): Move = {
-    NegaMax.negaMax(game, game.colorToMove)
+    NegaMax.negaMax(game, game.colorToMove, maxDepth)._1
   }
 }
