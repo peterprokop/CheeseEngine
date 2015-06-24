@@ -1,6 +1,7 @@
 import java.io.Serializable
 
 import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
 import scala.util.Random
 
 /**
@@ -11,10 +12,16 @@ abstract class Bot {
   def nextMove(game: Game): Move
 }
 
+
 class RandomBot extends Bot {
   def nextMove(game: Game): Move = {
     val possibleMoves = game.board.possibleMovesForColor(game.colorToMove)
-    possibleMoves(Random.nextInt(possibleMoves.size))
+    val numOfMoves = possibleMoves.size
+    if (numOfMoves == 0) {
+      null
+    } else {
+      possibleMoves(Random.nextInt(numOfMoves))
+    }
   }
 }
 
@@ -59,6 +66,30 @@ object NegaMax extends Serializable {
   }
 }
 
+class NegaMaxSpark(sc: SparkContext) extends Serializable  {
+  val movesOrdering = new Ordering[Tuple2[Move, Double]]() {
+    override def compare(x: (Move, Double), y: (Move, Double)): Int =
+      Ordering[Double].compare(x._2, y._2)
+  }
+
+  def negaMaxSpark(game: Game, color: PieceColor, depth: Int): (Move, Double) = {
+    val board = game.board
+
+    if (depth == 0) {
+      (null, NegaMax.evaluateDefault(game, color))
+    } else {
+      val moves = board.possibleMovesForColor(color)
+      val movesPar = sc.parallelize(moves)
+
+      val moveMappingFunc = (m: Move) => { NegaMax.negaMax(new Game(board.boardByMakingMove(m), color.oppositeColor, null), color.oppositeColor, depth - 1) }
+      val movesWithScorePar = movesPar.map(m => (m, moveMappingFunc(m)._2))
+      val move = movesWithScorePar.min()(movesOrdering)
+
+      (move._1, -move._2)
+    }
+  }
+}
+
 class SparkBot(sc: SparkContext) extends Bot {
   def nextMove(game: Game): Move = {
     val board = game.board
@@ -81,5 +112,12 @@ class SparkBot(sc: SparkContext) extends Bot {
 class NegaMaxBot(val maxDepth: Int) extends Bot {
   def nextMove(game: Game): Move = {
     NegaMax.negaMax(game, game.colorToMove, maxDepth)._1
+  }
+}
+
+class NegaMaxSparkBot(val maxDepth: Int, sc: SparkContext) extends Bot {
+  def nextMove(game: Game): Move = {
+    val nms = new NegaMaxSpark(sc)
+    nms.negaMaxSpark(game, game.colorToMove, maxDepth)._1
   }
 }
