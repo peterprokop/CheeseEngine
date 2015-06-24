@@ -4,6 +4,7 @@ import PieceType._
  * Created by peterprokop on 31/03/15.
  */
 
+/** Used to construct default 8x8 board */
 object Board {
   val defaultBoardSize = 8
 
@@ -55,6 +56,7 @@ class Move(val from: Position,
   override def toString() = from.toString + " " + to.toString
 }
 
+/** Represents current board - pieces & their positions */
 class Board(val width: Int, val height: Int, val pieces: Array[Array[Option[Piece]]]) extends Serializable {
   def isPositionValid(position: Position) : Boolean = {
     if (position.c < 0 || position.r < 0) {

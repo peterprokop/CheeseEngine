@@ -12,7 +12,42 @@ abstract class Bot {
   def nextMove(game: Game): Move
 }
 
+/** Simple Spark Bot - maximizes material amount after 1 move */
+class SparkBot(sc: SparkContext) extends Bot {
+  def nextMove(game: Game): Move = {
+    val board = game.board
+    val color = game.colorToMove
+    val moves = board.possibleMovesForColor(color)
+    val movesPar = sc.parallelize(moves)
 
+    val materialFunc =  (m: Move) => { -board.boardByMakingMove(m).materialOfColor(color.oppositeColor) }
+
+    val movesWithMaterial = movesPar.map(m => (m, materialFunc(m)))
+    val materialMax = movesWithMaterial.map(_._2).max()
+    val optimalMoves = movesWithMaterial.filter(_._2 == materialMax)
+
+    val count = optimalMoves.count().toInt
+    val index = Random.nextInt(count)
+    optimalMoves.collect()(index)._1
+  }
+}
+
+/** Uses simple, single-threaded NegaMax algorithm */
+class NegaMaxBot(val maxDepth: Int) extends Bot {
+  def nextMove(game: Game): Move = {
+    NegaMax.negaMax(game, game.colorToMove, maxDepth)._1
+  }
+}
+
+/** Uses Spark version of algorithm */
+class NegaMaxSparkBot(val maxDepth: Int, sc: SparkContext) extends Bot {
+  def nextMove(game: Game): Move = {
+    val nms = new NegaMaxSpark(sc)
+    nms.negaMaxSpark(game, game.colorToMove, maxDepth)._1
+  }
+}
+
+/** Makes completely random move */
 class RandomBot extends Bot {
   def nextMove(game: Game): Move = {
     val possibleMoves = game.board.possibleMovesForColor(game.colorToMove)
@@ -25,6 +60,7 @@ class RandomBot extends Bot {
   }
 }
 
+/** Implements simple, single-threaded NegaMax algorithm */
 object NegaMax extends Serializable {
   val defaultDepth = 3
 
@@ -66,6 +102,7 @@ object NegaMax extends Serializable {
   }
 }
 
+/** Implements NegaMax algorithm using Apache Spark via parallelizing moves */
 class NegaMaxSpark(sc: SparkContext) extends Serializable  {
   val movesOrdering = new Ordering[Tuple2[Move, Double]]() {
     override def compare(x: (Move, Double), y: (Move, Double)): Int =
@@ -87,37 +124,5 @@ class NegaMaxSpark(sc: SparkContext) extends Serializable  {
 
       (move._1, -move._2)
     }
-  }
-}
-
-class SparkBot(sc: SparkContext) extends Bot {
-  def nextMove(game: Game): Move = {
-    val board = game.board
-    val color = game.colorToMove
-    val moves = board.possibleMovesForColor(color)
-    val movesPar = sc.parallelize(moves)
-
-    val materialFunc =  (m: Move) => { -board.boardByMakingMove(m).materialOfColor(color.oppositeColor) }
-
-    val movesWithMaterial = movesPar.map(m => (m, materialFunc(m)))
-    val materialMax = movesWithMaterial.map(_._2).max()
-    val optimalMoves = movesWithMaterial.filter(_._2 == materialMax)
-
-    val count = optimalMoves.count().toInt
-    val index = Random.nextInt(count)
-    optimalMoves.collect()(index)._1
-  }
-}
-
-class NegaMaxBot(val maxDepth: Int) extends Bot {
-  def nextMove(game: Game): Move = {
-    NegaMax.negaMax(game, game.colorToMove, maxDepth)._1
-  }
-}
-
-class NegaMaxSparkBot(val maxDepth: Int, sc: SparkContext) extends Bot {
-  def nextMove(game: Game): Move = {
-    val nms = new NegaMaxSpark(sc)
-    nms.negaMaxSpark(game, game.colorToMove, maxDepth)._1
   }
 }
